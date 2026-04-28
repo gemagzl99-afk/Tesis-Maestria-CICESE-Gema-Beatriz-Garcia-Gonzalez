@@ -1,0 +1,102 @@
+# 1. Cargar librerías requeridas.
+library(dplyr)
+library(tidyr)
+install.packages("ggplot2")
+library(ggplot2)
+library(tidyverse)
+
+
+# 2. Ingreso de datos de absorbancia (D.O. 680) del lector de placas (con réplicas).
+datos_wide <- data.frame(
+  Muestra = c("WT 1", "WT 2", "CRBS 1", "CRBS 2"),
+  t0 = c(0.1200, 0.1160, 0.1527, 0.1411),
+  t3 = c(0.1265, 0.1284, 0.1456, 0.1359),
+  t6 = c(0.1497, 0.1512, 0.1520, 0.1328),
+  t9 = c(0.2096, 0.2131, 0.1708, 0.1466),
+  t12 = c(0.2411, 0.3053, 0.1874, 0.1721),
+  t19 = c(0.6182, 0.4997, 0.2728, 0.2725),
+  stringsAsFactors = FALSE
+)
+
+# 3. Preparación de datos para graficar, calcular media y desviación estándar.
+datos_long <- datos_wide %>%
+  pivot_longer(
+    cols = -Muestra,
+    names_to = "Tiempo",
+    values_to = "Valor",
+    names_prefix = "t"
+  ) %>%
+  mutate(
+    Tiempo = as.numeric(Tiempo),
+    Cepa = case_when(
+      grepl("WT", Muestra) ~ "WT",
+      grepl("CRBS", Muestra) ~ "CRBS"
+    ),
+    Cepa = factor(Cepa, levels = c("WT", "CRBS"))
+  ) %>%
+  # MODIFICACIÓN: Cálculo de la Media y la Desviación Estándar (SD)
+  group_by(Tiempo, Cepa) %>%
+  summarise(
+    Media = mean(Valor),
+    SD = sd(Valor),
+    .groups = "drop"
+  )
+
+# 4. Diseño del gráfico con barras de error.
+ggplot(datos_long, aes(x = Tiempo, y = Media, color = Cepa, group = Cepa, shape = Cepa)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 4) + 
+  
+  geom_errorbar(
+    aes(ymin = Media - SD, ymax = Media + SD),
+    width = 0.5,        # Ancho de los remates horizontales de la barra
+    linewidth = 0.8,    # Grosor de la línea de error
+    show.legend = FALSE # Evita que la barra altere el diseño de tu leyenda
+  ) +
+  
+  scale_x_continuous(
+    limits = c(0, 21),
+    breaks = seq(0, 21, by = 3),
+    expand = expansion(mult = c(0, 0.05)) 
+  ) +
+  scale_y_continuous(
+    limits = c(0.1, 0.65),
+    breaks = seq(0.1, 0.65, by = 0.05),
+    expand = expansion(mult = c(0, 0.05)) 
+  ) +
+  coord_cartesian(clip = "off") + 
+  labs(
+    title = expression(italic("S. fredii")),
+    x = "Tiempo (horas)",
+    y = expression(bold("D.O."[680])),
+    color = NULL,
+    shape = NULL
+  ) +
+  scale_color_manual(
+    values = c("WT" = "#DE2D26", "CRBS" = "#00a1d5"), 
+    labels = c("WT", expression(Delta * italic("crbs")))
+  ) +
+  scale_shape_manual(
+    values = c("WT" = 16, "CRBS" = 17),
+    labels = c("WT", expression(Delta * italic("crbs")))
+  ) +
+  guides(
+    shape = "none", 
+    color = guide_legend(override.aes = list(shape = c(16, 17)))
+  ) +
+  theme_bw(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 24),
+    axis.title.x = element_text(face = "bold", margin = margin(t = 24)), 
+    axis.title.y = element_text(face = "bold", margin = margin(r = 24)), 
+    axis.text = element_text(color = "black", face = "bold"),
+    panel.grid.major = element_line(color = "grey85", linewidth = 0.5),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 1.2),
+    plot.margin = margin(t = 10, r = 15, b = 10, l = 10), 
+    legend.position = "top",
+    legend.key = element_blank(), 
+    legend.text = element_text(size = 18)
+  )
+
+
