@@ -1,0 +1,74 @@
+# 1. Cargar librerías requeridas.
+library(dplyr)
+library(tidyr)
+install.packages("ggplot2")
+library(ggplot2)
+library(tidyverse)
+
+# 2. Ingreso de datos de absorbancia (D.O. 600) del lector de placas.
+datos_wide <- data.frame(
+  Muestra = c("WT", "CRBS", "PAS"),
+  t0 = c(0.0634, 0.0875, 0.0834),
+  t3 = c(0.0714, 0.0492, 0.0663),
+  t6 = c(0.1036, 0.0577, 0.0700),
+  t9 = c(0.1396, 0.0631, 0.0794),
+  t12 = c(0.1748, 0.0790, 0.0972),
+  t14 = c(0.2110, 0.0904, 0.1047),
+  t23 = c(0.2395, 0.1710, 0.1580),
+  stringsAsFactors = FALSE
+)
+
+# 3. Preparación de datos para graficar.
+datos_long <- datos_wide %>%
+  pivot_longer(
+    cols = -Muestra,
+    names_to = "Tiempo",
+    values_to = "Valor",
+    names_prefix = "t"
+  ) %>%
+  mutate(
+    Tiempo = as.numeric(Tiempo),
+    Cepa = factor(Muestra, levels = c("WT", "CRBS", "PAS"))
+  )
+
+  # 4. Diseño del gráfico.
+ggplot(datos_long, aes(x = Tiempo, y = Valor, color = Cepa, group = Cepa, shape = Cepa)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 4) + 
+  scale_x_continuous(
+    limits = c(0, 24), breaks = seq(0, 24, by = 3), expand = expansion(mult = c(0, 0.05)) 
+  ) +
+  scale_y_continuous(
+    limits = c(0.01, 0.26), breaks = seq(0.01, 0.26, by = 0.05), expand = expansion(mult = c(0, 0.05))
+  ) +
+  coord_cartesian(clip = "off") + 
+  labs(
+    title = expression(italic("T. thermophilus")),
+    x = "Tiempo (horas)", y = expression(bold("D.O."[600])), color = NULL, shape = NULL
+  ) +
+  scale_color_manual(
+    values = c("WT" = "#DE2D26", "CRBS" = "#00a1d5", "PAS" = "#217a36"), 
+    labels = c("WT", expression(Delta * italic("crbS")), expression(Delta * italic("pas")))
+  ) +
+  scale_shape_manual(
+    values = c("WT" = 16, "CRBS" = 17, "PAS" = 18),
+    labels = c("WT", expression(Delta * italic("crbS")), expression(Delta * italic("pas")))
+  ) +
+  guides(
+    shape = "none", 
+    color = guide_legend(override.aes = list(shape = c(16, 17, 18)))
+  ) +
+  theme_bw(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 24),
+    axis.title.x = element_text(face = "bold", margin = margin(t = 24)), 
+    axis.title.y = element_text(face = "bold", margin = margin(r = 24)), 
+    axis.text = element_text(color = "black", face = "bold"),
+    panel.grid.major = element_line(color = "grey85", linewidth = 0.5),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 1.2),
+    plot.margin = margin(t = 10, r = 15, b = 10, l = 10), 
+    legend.position = "top",
+    legend.key = element_blank(), 
+    legend.text = element_text(size = 18)
+  )
